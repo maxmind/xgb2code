@@ -1,0 +1,9 @@
+{{if .DefaultLeft -}}
+{{indent .Level}}if data[{{.SplitIndex}}] == nil || *data[{{.SplitIndex}}] < {{.SplitCondition}} {
+{{else -}}
+{{indent .Level}}if data[{{.SplitIndex}}] != nil && *data[{{.SplitIndex}}] < {{.SplitCondition}} {
+{{end}}
+{{- .Left -}}
+{{indent .Level}}} else {
+{{.Right -}}
+{{indent .Level}}}

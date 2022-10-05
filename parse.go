@@ -34,13 +34,13 @@ type xgbTree struct {
 func readModel(inputJSON string) (*xgbModel, error) {
 	fh, err := os.Open(filepath.Clean(inputJSON))
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err) //nolint:forbidigo // open sourcing
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 	defer fh.Close() //nolint:gosec // not important
 
 	var x xgbModel
 	if err := json.NewDecoder(fh).Decode(&x); err != nil {
-		return nil, fmt.Errorf("error decoding JSON: %w", err) //nolint:forbidigo // open sourcing
+		return nil, fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	return &x, nil
@@ -61,7 +61,7 @@ func readTrees(x *xgbModel) ([]*node, error) {
 
 	bestIteration, err := x.Learner.Attributes.BestIteration.Int64()
 	if err != nil {
-		return nil, fmt.Errorf( //nolint:forbidigo // open sourcing
+		return nil, fmt.Errorf(
 			"error parsing best_iteration as int: %w",
 			err,
 		)
@@ -86,7 +86,7 @@ type nodeData struct {
 func parseTreeInfo(xt xgbTree) (*node, error) {
 	numNodes, err := xt.TreeParam.NumNodes.Int64()
 	if err != nil {
-		return nil, fmt.Errorf( //nolint:forbidigo // open sourcing
+		return nil, fmt.Errorf(
 			"error parsing num_nodes as an integer: %w",
 			err,
 		)

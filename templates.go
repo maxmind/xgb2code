@@ -43,7 +43,7 @@ func newRenderer() (*renderer, error) {
 
 	for name, body := range templateNameToTemplate {
 		if _, err := r.template.New(name).Parse(body); err != nil {
-			return nil, fmt.Errorf( //nolint:forbidigo // open sourcing
+			return nil, fmt.Errorf(
 				"error parsing %s template: %w",
 				name,
 				err,
@@ -86,7 +86,7 @@ func (r *renderer) executeDecisionNode(
 		},
 	)
 	if err != nil {
-		return "", fmt.Errorf( //nolint:forbidigo // open sourcing
+		return "", fmt.Errorf(
 			"error executing decision_node template: %w",
 			err,
 		)
@@ -116,7 +116,7 @@ func (r *renderer) executeRoot(
 		},
 	)
 	if err != nil {
-		return "", fmt.Errorf( //nolint:forbidigo // open sourcing
+		return "", fmt.Errorf(
 			"error executing root template: %w",
 			err,
 		)
@@ -143,7 +143,7 @@ func (r *renderer) executeTerminalNode(
 		},
 	)
 	if err != nil {
-		return "", fmt.Errorf( //nolint:forbidigo // open sourcing
+		return "", fmt.Errorf(
 			"error executing terminal_node template: %w",
 			err,
 		)

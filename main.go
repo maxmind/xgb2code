@@ -79,7 +79,7 @@ func run(
 	}
 
 	if err := os.WriteFile(outputFile, []byte(code), 0o644); err != nil {
-		return fmt.Errorf("error writing file: %w", err) //nolint:forbidigo // open sourcing
+		return fmt.Errorf("error writing file: %w", err)
 	}
 
 	return nil

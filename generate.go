@@ -42,7 +42,7 @@ func codegen(
 	// return the formatted code since we intend what we generate to already be
 	// well formatted.
 	if _, err := format.Source([]byte(code)); err != nil {
-		return "", fmt.Errorf("error formatting code: %w", err) //nolint:forbidigo // open sourcing
+		return "", fmt.Errorf("error formatting code: %w", err)
 	}
 
 	return code, nil

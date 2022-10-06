@@ -33,9 +33,20 @@ func main() {
 		"The function name to use. Must be a valid Go function name.",
 	)
 
+	versionFlag := flag.Bool(
+		"version",
+		false,
+		"Print version and exit.",
+	)
+
 	outputFile := flag.String("output-file", "", "The file to write to")
 
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("xgb2code v%s\n", version)
+		os.Exit(0)
+	}
 
 	if *inputJSON == "" ||
 		language(*lang) != languageGo ||

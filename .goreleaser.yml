@@ -1,0 +1,54 @@
+project_name: 'xgb2code'
+
+builds:
+  - id: 'xgb2code'
+    binary: 'xgb2code'
+    goos:
+      - 'darwin'
+      - 'linux'
+      - 'windows'
+    ignore:
+      - goos: 'darwin'
+        goarch: '386'
+
+archives:
+  - id: 'xgb2code'
+    builds:
+      - 'xgb2code'
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - 'CHANGELOG.md'
+      - 'LICENSE-APACHE'
+      - 'LICENSE-MIT'
+      - 'README.md'
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  skip: true
+
+nfpms:
+  - id: 'xgb2code'
+    builds:
+      - 'xgb2code'
+    vendor: 'MaxMind, Inc.'
+    homepage: 'https://www.maxmind.com/'
+    maintainer: 'MaxMind, Inc. <support@maxmind.com>'
+    description: 'Generate code for an XGB model.'
+    license: 'Apache 2.0 or MIT'
+    formats:
+      - 'deb'
+      - 'rpm'
+    bindir: '/usr/bin'
+    files:
+      'CHANGELOG.md': '/usr/share/doc/xgb2code/CHANGELOG.md'
+      'LICENSE-APACHE': '/usr/share/doc/xgb2code/LICENSE-APACHE'
+      'LICENSE-MIT': '/usr/share/doc/xgb2code/LICENSE-MIT'
+      'README.md': '/usr/share/doc/xgb2code/README.md'

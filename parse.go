@@ -36,7 +36,7 @@ func readModel(inputJSON string) (*xgbModel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %w", err)
 	}
-	defer fh.Close() //nolint:gosec // not important
+	defer fh.Close()
 
 	var x xgbModel
 	if err := json.NewDecoder(fh).Decode(&x); err != nil {

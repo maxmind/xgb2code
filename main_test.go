@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/maxmind/xgb2code/gen"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,8 +22,7 @@ func TestGenerateAndRunModels(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.model, func(t *testing.T) {
 			// Generate the code.
-
-			modelDir := filepath.Join("testdata", test.model)
+			modelDir := filepath.Join("gen", "testdata", test.model)
 			modelFile := filepath.Join(modelDir, "model.json")
 
 			packageName := "main"
@@ -31,13 +31,13 @@ func TestGenerateAndRunModels(t *testing.T) {
 			outputDir := t.TempDir()
 			funcFile := filepath.Join(outputDir, "predict.go")
 
-			err := GenerateFile(modelFile, packageName, functionName, funcFile)
+			err := gen.GenerateFile(modelFile, packageName, functionName, funcFile)
 			require.NoError(t, err)
 
 			// Copy the test program and test data into place.
 
 			files := []string{
-				filepath.Join("testdata", "main.go"),
+				filepath.Join("gen", "testdata", "main.go"),
 				filepath.Join(modelDir, "xtest.csv"),
 				filepath.Join(modelDir, "preds.csv"),
 			}

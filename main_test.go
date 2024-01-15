@@ -31,7 +31,7 @@ func TestGenerateAndRunModels(t *testing.T) {
 			outputDir := t.TempDir()
 			funcFile := filepath.Join(outputDir, "predict.go")
 
-			err := run(modelFile, packageName, functionName, funcFile)
+			err := GenerateFile(modelFile, packageName, functionName, funcFile)
 			require.NoError(t, err)
 
 			// Copy the test program and test data into place.

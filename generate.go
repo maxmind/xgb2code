@@ -10,7 +10,7 @@ type treeFunction struct {
 	Name string
 }
 
-func codegen(
+func generateSource(
 	packageName,
 	funcName string,
 	trees []*node,

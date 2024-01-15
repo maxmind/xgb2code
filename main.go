@@ -57,13 +57,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := run(*inputJSON, *packageName, *funcName, *outputFile)
+	err := GenerateFile(*inputJSON, *packageName, *funcName, *outputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(
+// GenerateFile generates a .go file containing a function that implements the XGB model.
+func GenerateFile(
 	inputJSON string,
 	packageName,
 	funcName,
@@ -84,7 +85,7 @@ func run(
 		return err
 	}
 
-	code, err := codegen(packageName, funcName, trees, r)
+	code, err := generateSource(packageName, funcName, trees, r)
 	if err != nil {
 		return err
 	}

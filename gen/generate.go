@@ -1,8 +1,10 @@
-package main
+// Package gen generates Go code from an XGBoost model.
+package gen
 
 import (
 	"fmt"
 	"go/format"
+	"os"
 )
 
 type treeFunction struct {
@@ -10,7 +12,7 @@ type treeFunction struct {
 	Name string
 }
 
-func codegen(
+func generateSource(
 	packageName,
 	funcName string,
 	trees []*node,
@@ -64,4 +66,37 @@ func codegenTree(r *renderer, tree *node, level int) (string, error) {
 	}
 
 	return r.executeDecisionNode(tree, level, left, right)
+}
+
+// GenerateFile generates a .go file containing a function that implements the XGB model.
+func GenerateFile(
+	inputJSON string,
+	packageName,
+	funcName,
+	outputFile string,
+) error {
+	x, err := readModel(inputJSON)
+	if err != nil {
+		return err
+	}
+
+	trees, err := readTrees(x)
+	if err != nil {
+		return err
+	}
+
+	r, err := newRenderer()
+	if err != nil {
+		return err
+	}
+
+	code, err := generateSource(packageName, funcName, trees, r)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(outputFile, []byte(code), 0o644); err != nil {
+		return fmt.Errorf("error writing file: %w", err)
+	}
+	return nil
 }

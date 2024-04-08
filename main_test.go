@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/maxmind/xgb2code/gen"
 	"github.com/stretchr/testify/require"
+
+	"github.com/maxmind/xgb2code/gen"
 )
 
 func TestGenerateAndRunModels(t *testing.T) {

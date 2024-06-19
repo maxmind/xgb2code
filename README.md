@@ -66,6 +66,6 @@ Please report bugs by filing an issue with our GitHub issue tracker at
 
 ## Copyright and License
 
-This software is Copyright (c) 2022 by MaxMind, Inc.
+This software is Copyright (c) 2022 - 2024 by MaxMind, Inc.
 
 This is free software, licensed under the [Apache License, Version 2.0](LICENSE-APACHE) or the [MIT License](LICENSE-MIT), at your option.

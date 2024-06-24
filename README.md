@@ -55,7 +55,7 @@ func predict(data []*float32, predMargin bool) float32 {
 ## Installation
 
 [Release binaries and
-packages](https://github.com/maxmind/mmdbinspect/releases) have been made
+packages](https://github.com/maxmind/xgb2code/releases) have been made
 available for several popular platforms. Simply download the binary for
 your platform and run it.
 

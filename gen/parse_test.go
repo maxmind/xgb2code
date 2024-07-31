@@ -126,3 +126,15 @@ func TestParseTreeInfo(t *testing.T) {
 		treeInfo,
 	)
 }
+
+func BenchmarkParseTreeInfo(b *testing.B) {
+	x, err := readModel(filepath.Join("testdata", "small-model", "model.json"))
+	require.NoError(b, err)
+	tree := x.Learner.GradientBooster.Model.Trees[0]
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := parseTreeInfo(tree)
+		require.NoError(b, err)
+	}
+}

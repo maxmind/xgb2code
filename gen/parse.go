@@ -71,9 +71,9 @@ func readTrees(x *xgbModel) ([]*node, error) {
 }
 
 type node struct {
-	data  nodeData
 	left  *node
 	right *node
+	data  nodeData
 }
 
 type nodeData struct {
@@ -92,11 +92,7 @@ func parseTreeInfo(xt xgbTree) (*node, error) {
 		)
 	}
 
-	var nodes []*node
-	for i := 0; i < int(numNodes); i++ {
-		nodes = append(nodes, &node{})
-	}
-
+	nodes := make([]node, numNodes)
 	for i := 0; i < int(numNodes); i++ {
 		nodes[i].data = nodeData{
 			DefaultLeft:    xt.DefaultLeft[i],
@@ -112,9 +108,9 @@ func parseTreeInfo(xt xgbTree) (*node, error) {
 			continue
 		}
 
-		nodes[i].left = nodes[left]
-		nodes[i].right = nodes[right]
+		nodes[i].left = &nodes[left]
+		nodes[i].right = &nodes[right]
 	}
 
-	return nodes[0], nil // Root node
+	return &nodes[0], nil // Root node
 }

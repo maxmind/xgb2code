@@ -78,7 +78,7 @@ type node struct {
 
 type nodeData struct {
 	DefaultLeft    int
-	ID             int
+	ID             int64
 	SplitCondition float64
 	SplitIndex     int
 }
@@ -93,7 +93,7 @@ func parseTreeInfo(xt xgbTree) (*node, error) {
 	}
 
 	nodes := make([]node, numNodes)
-	for i := 0; i < int(numNodes); i++ {
+	for i := range numNodes {
 		nodes[i].data = nodeData{
 			DefaultLeft:    xt.DefaultLeft[i],
 			ID:             i,

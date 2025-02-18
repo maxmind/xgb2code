@@ -55,7 +55,7 @@ func newRenderer() (*renderer, error) {
 
 func indent(level int) string {
 	var s string
-	for i := 0; i < level+1; i++ {
+	for range level + 1 {
 		s += "\t"
 	}
 	return s

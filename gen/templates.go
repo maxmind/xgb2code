@@ -62,10 +62,11 @@ func indent(level int) string {
 }
 
 type decisionNodeParams struct {
+	nodeData
+
 	Left  string
 	Right string
 	Level int
-	nodeData
 }
 
 func (r *renderer) executeDecisionNode(
@@ -126,6 +127,7 @@ func (r *renderer) executeRoot(
 
 type terminalNodeParams struct {
 	nodeData
+
 	Level int
 }
 

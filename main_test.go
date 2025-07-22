@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -62,9 +63,11 @@ func TestGenerateAndRunModels(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			ctx := context.Background()
+
 			// Run the program.
 
-			cmd := exec.Command("go", "run", "main.go", "predict.go")
+			cmd := exec.CommandContext(ctx, "go", "run", "main.go", "predict.go")
 			cmd.Dir = outputDir
 
 			buf, err := cmd.CombinedOutput()

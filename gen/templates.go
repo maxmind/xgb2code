@@ -55,13 +55,11 @@ func newRenderer() (*renderer, error) {
 }
 
 func indent(level int) string {
-	var s string
-	var sSb58 strings.Builder
+	var sb strings.Builder
 	for range level + 1 {
-		sSb58.WriteString("\t")
+		sb.WriteString("\t")
 	}
-	s += sSb58.String()
-	return s
+	return sb.String()
 }
 
 type decisionNodeParams struct {

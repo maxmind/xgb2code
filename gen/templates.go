@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -55,9 +56,11 @@ func newRenderer() (*renderer, error) {
 
 func indent(level int) string {
 	var s string
+	var sSb58 strings.Builder
 	for range level + 1 {
-		s += "\t"
+		sSb58.WriteString("\t")
 	}
+	s += sSb58.String()
 	return s
 }
 

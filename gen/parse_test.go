@@ -132,8 +132,7 @@ func BenchmarkParseTreeInfo(b *testing.B) {
 	require.NoError(b, err)
 	tree := x.Learner.GradientBooster.Model.Trees[0]
 
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_, err := parseTreeInfo(tree)
 		require.NoError(b, err)
 	}

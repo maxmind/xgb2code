@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -54,11 +55,11 @@ func newRenderer() (*renderer, error) {
 }
 
 func indent(level int) string {
-	var s string
+	var sb strings.Builder
 	for range level + 1 {
-		s += "\t"
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
 
 type decisionNodeParams struct {

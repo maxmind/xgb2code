@@ -16,6 +16,7 @@ func generateSource(
 	packageName,
 	funcName string,
 	trees []*node,
+	meta modelMeta,
 	r *renderer,
 ) (string, error) {
 	var treeFunctions []treeFunction
@@ -35,7 +36,7 @@ func generateSource(
 		)
 	}
 
-	code, err := r.executeRoot(packageName, funcName, treeFunctions)
+	code, err := r.executeRoot(packageName, funcName, treeFunctions, meta)
 	if err != nil {
 		return "", err
 	}
@@ -85,12 +86,17 @@ func GenerateFile(
 		return err
 	}
 
+	meta, err := readModelMeta(x)
+	if err != nil {
+		return err
+	}
+
 	r, err := newRenderer()
 	if err != nil {
 		return err
 	}
 
-	code, err := generateSource(packageName, funcName, trees, r)
+	code, err := generateSource(packageName, funcName, trees, meta, r)
 	if err != nil {
 		return err
 	}

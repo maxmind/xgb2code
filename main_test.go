@@ -18,7 +18,10 @@ func TestGenerateAndRunModels(t *testing.T) {
 		model string
 	}{
 		{model: "small-model"},
-		{model: "breast-cancer"},
+		{model: "binary-logistic"},
+		{model: "reg-squarederror"},
+		{model: "binary-logitraw"},
+		{model: "reg-quantileerror"},
 	}
 
 	for _, test := range tests {

@@ -98,14 +98,17 @@ func (r *renderer) executeDecisionNode(
 
 type rootParams struct {
 	FuncName      string
+	Intercept     float64
 	PackageName   string
 	TreeFunctions []treeFunction
+	UseSigmoid    bool
 }
 
 func (r *renderer) executeRoot(
 	packageName,
 	funcName string,
 	treeFunctions []treeFunction,
+	meta modelMeta,
 ) (string, error) {
 	var buf bytes.Buffer
 	err := r.template.ExecuteTemplate(
@@ -113,8 +116,10 @@ func (r *renderer) executeRoot(
 		rootTemplateName,
 		rootParams{
 			FuncName:      funcName,
+			Intercept:     meta.intercept,
 			PackageName:   packageName,
 			TreeFunctions: treeFunctions,
+			UseSigmoid:    meta.useSigmoid,
 		},
 	)
 	if err != nil {

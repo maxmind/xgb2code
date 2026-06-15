@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.0.0 (2026-06-12)
+## 1.0.0
 
 - Refactored the codebase to allow using the code generation functionality as a
   library.

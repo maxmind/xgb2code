@@ -11,7 +11,11 @@ Generating code for a model avoids having to call out to a different language
 
 ## Model Support
 
-Currently binary classification is supported.
+The following XGBoost objectives are supported:
+
+- Binary classification: `binary:logistic` and `binary:logitraw`.
+- Regression: `reg:logistic`, `reg:squarederror`, `reg:linear`,
+  `reg:absoluteerror`, `reg:pseudohubererror`, and `reg:quantileerror`.
 
 ## Supported Languages
 
@@ -38,7 +42,7 @@ Usage of ./xgb2code:
 
 ```bash
 $ ./xgb2code -function-name predict \
-             -go-package-name main
+             -go-package-name main \
              -input-json testdata/small-model/model.json \
              -language go \
              -output-file predict.go
@@ -49,6 +53,38 @@ signature:
 
 ```go
 func predict(data []*float32, predMargin bool) float32 {
+```
+
+When `predMargin` is true, the function returns the raw margin (the summed tree
+outputs plus the `base_score` intercept). Otherwise, the sigmoid is applied for
+the logistic objectives (`binary:logistic` and `reg:logistic`); for all other
+objectives the margin is the final prediction, so `predMargin` has no effect.
+
+## Library Usage
+
+The code generation functionality is also available as a library via the `gen`
+package:
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/maxmind/xgb2code/gen"
+)
+
+func main() {
+	err := gen.GenerateFile(
+		"testdata/small-model/model.json", // input model JSON
+		"main",                            // Go package name
+		"predict",                         // function name
+		"predict.go",                      // output file
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 ```
 
 ## Installation

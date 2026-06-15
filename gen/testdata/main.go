@@ -86,8 +86,18 @@ func testPrediction(
 
 	gotPrediction := predict(features, false)
 
-	predictionDelta := gotPrediction - expectedPrediction
-	if math.Abs(float64(predictionDelta)) > 0.00001 {
+	// Allow for float32 rounding differences between XGBoost's prediction and
+	// the generated code. Regression objectives can produce large-magnitude
+	// outputs where a tight absolute bound is unrealistic, so accept the
+	// prediction if either the absolute or the relative error is small. The
+	// relative denominator is floored at 1.0 so that for small-magnitude
+	// outputs (the [0, 1] range of logistic objectives, or near-zero
+	// regression targets) the check stays effectively absolute, rather than a
+	// target near zero blowing the relative error up to infinity.
+	const tolerance = 0.00001
+	absDelta := math.Abs(float64(gotPrediction - expectedPrediction))
+	relDelta := absDelta / math.Max(math.Abs(float64(expectedPrediction)), 1.0)
+	if absDelta > tolerance && relDelta > tolerance {
 		return fmt.Errorf("got %f, expected %f", gotPrediction, expectedPrediction)
 	}
 

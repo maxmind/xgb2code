@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generate a model to test"""
+"""Generate a regression model to test"""
 
 import random
 import numpy as np
@@ -12,7 +12,7 @@ RANDOM_SEED = 0
 np.random.seed(RANDOM_SEED)
 random.seed(RANDOM_SEED)
 
-data = sklearn.datasets.load_breast_cancer(return_X_y=False)
+data = sklearn.datasets.load_diabetes(return_X_y=False)
 df = pd.DataFrame(data.data)  # pylint: disable=no-member
 # make some columns NaN at random.
 df = df.mask(np.random.random(df.shape) < 0.2)
@@ -21,23 +21,23 @@ X_train, X_test, y_train, y_test = train_test_split(
     df,
     data.target,  # pylint: disable=no-member
     test_size=0.30,
-    stratify=data.target,  # pylint: disable=no-member
 )
 
-XGB_MISSING = np.NaN
+XGB_MISSING = np.nan
 NUM_ROUNDS = 500
 DEFAULT_XGB_PARAMS = {
-    "objective": "binary:logistic",
+    "objective": "reg:squarederror",
     "eta": 0.1,
-    "eval_metric": "auc",
+    "eval_metric": "rmse",
     "nthread": 1,
     "seed": RANDOM_SEED,
     "tree_method": "hist",
-    "max_depth": 12,
+    "max_depth": 6,
     "subsample": 0.9,
     "colsample_bylevel": 0.9,
     "colsample_bytree": 0.9,
     "colsample_bynode": 0.9,
+    "base_score": 150.0,
 }
 
 # Set feature names rather than leave them as the defaults of "0", "1", etc, to

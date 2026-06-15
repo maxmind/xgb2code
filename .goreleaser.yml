@@ -14,12 +14,13 @@ builds:
 
 archives:
   - id: 'xgb2code'
-    builds:
+    ids:
       - 'xgb2code'
     wrap_in_directory: true
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - 'CHANGELOG.md'
       - 'LICENSE-APACHE'
@@ -30,14 +31,14 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 
 changelog:
   disable: true
 
 nfpms:
   - id: 'xgb2code'
-    builds:
+    ids:
       - 'xgb2code'
     vendor: 'MaxMind, Inc.'
     homepage: 'https://www.maxmind.com/'

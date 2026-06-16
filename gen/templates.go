@@ -54,6 +54,24 @@ func newRenderer() (*renderer, error) {
 	return &r, nil
 }
 
+// categoryTest builds the "value not in category set" predicate for a
+// categorical split, e.g. "(*data[3] != 0 && *data[3] != 2)". It returns the
+// empty string for numeric splits. A categorical node with an empty set routes
+// every present value left, so the predicate is the constant "true".
+func categoryTest(d nodeData) string {
+	if !d.Categorical {
+		return ""
+	}
+	if len(d.Categories) == 0 {
+		return "true"
+	}
+	parts := make([]string, len(d.Categories))
+	for i, c := range d.Categories {
+		parts[i] = fmt.Sprintf("*data[%d] != %d", d.SplitIndex, c)
+	}
+	return "(" + strings.Join(parts, " && ") + ")"
+}
+
 func indent(level int) string {
 	var sb strings.Builder
 	for range level + 1 {
@@ -68,6 +86,10 @@ type decisionNodeParams struct {
 	Left  string
 	Right string
 	Level int
+	// CategoryTest is the Go expression, set only for categorical splits, that
+	// is true when the feature value is *not* in the node's category set (and so
+	// routes left). It mirrors the numeric "*data[i] < threshold" predicate.
+	CategoryTest string
 }
 
 func (r *renderer) executeDecisionNode(
@@ -81,10 +103,11 @@ func (r *renderer) executeDecisionNode(
 		&buf,
 		decisionNodeTemplateName,
 		decisionNodeParams{
-			Left:     left,
-			Level:    level,
-			nodeData: tree.data,
-			Right:    right,
+			Left:         left,
+			Level:        level,
+			nodeData:     tree.data,
+			Right:        right,
+			CategoryTest: categoryTest(tree.data),
 		},
 	)
 	if err != nil {

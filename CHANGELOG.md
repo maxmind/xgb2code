@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.1.0
+
+- Added support for categorical splits (models trained with
+  `enable_categorical`). Categorical features are passed as their integer
+  category codes in the `data` slice, the same encoding XGBoost uses internally.
+
 ## 1.0.0 (2026-06-15)
 
 - Refactored the codebase to allow using the code generation functionality as a

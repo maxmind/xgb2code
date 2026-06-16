@@ -17,6 +17,11 @@ The following XGBoost objectives are supported:
 - Regression: `reg:logistic`, `reg:squarederror`, `reg:linear`,
   `reg:absoluteerror`, `reg:pseudohubererror`, and `reg:quantileerror`.
 
+Both numeric and categorical splits (models trained with `enable_categorical`)
+are supported. Categorical features must be passed to the generated function as
+their integer category codes, the same encoding XGBoost uses internally; a
+missing feature is represented by a `nil` entry in the `data` slice.
+
 ## Supported Languages
 
 Currently `xgb2code` supports generating Go code.

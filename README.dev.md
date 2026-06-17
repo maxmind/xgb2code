@@ -3,13 +3,14 @@
 - Install `goreleaser`. Refer to its docs.
 - Set a `GITHUB_TOKEN` environment variable. Refer to `goreleaser` docs for
   information.
+  - `export GITHUB_TOKEN=$(gh auth token)`
 - Update `CHANGELOG.md`.
   - Mention recent changes.
   - Set a version if there is not one.
   - Set a release date.
 - Set version in `version.go`.
 - Commit `CHANGELOG.md` and `version.go`.
-- Tag the release: `git tag -a v1.2.3 -m 'Tag v1.2.3'`.
+- Tag the release: `git tag -a v1.2.3 -m  v1.2.3`.
 - Push the tag: `git push origin v1.2.3`.
 - Run `goreleaser release`.
 - Edit the release on [GitHub](https://github.com/maxmind/xgb2code/releases) to

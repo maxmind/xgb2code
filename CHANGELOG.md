@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.1.0
+## 1.1.0 (2026-06-17)
 
 - Added support for categorical splits (models trained with
   `enable_categorical`). Categorical features are passed as their integer

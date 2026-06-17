@@ -22,6 +22,7 @@ func TestGenerateAndRunModels(t *testing.T) {
 		{model: "reg-squarederror"},
 		{model: "binary-logitraw"},
 		{model: "reg-quantileerror"},
+		{model: "categorical"},
 	}
 
 	for _, test := range tests {

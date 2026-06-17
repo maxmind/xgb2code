@@ -1,7 +1,7 @@
 {{if .DefaultLeft -}}
-{{indent .Level}}if data[{{.SplitIndex}}] == nil || *data[{{.SplitIndex}}] < {{.SplitCondition}} {
+{{indent .Level}}if data[{{.SplitIndex}}] == nil || {{if .Categorical}}{{.CategoryTest}}{{else}}*data[{{.SplitIndex}}] < {{.SplitCondition}}{{end}} {
 {{else -}}
-{{indent .Level}}if data[{{.SplitIndex}}] != nil && *data[{{.SplitIndex}}] < {{.SplitCondition}} {
+{{indent .Level}}if data[{{.SplitIndex}}] != nil && {{if .Categorical}}{{.CategoryTest}}{{else}}*data[{{.SplitIndex}}] < {{.SplitCondition}}{{end}} {
 {{end}}
 {{- .Left -}}
 {{indent .Level}}} else {

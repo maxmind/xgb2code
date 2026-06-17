@@ -129,6 +129,233 @@ func TestParseTreeInfo(t *testing.T) {
 	)
 }
 
+func TestParseTreeInfoCategorical(t *testing.T) {
+	// A three-node tree whose root is a categorical split on feature 1 routing
+	// categories {0, 2} to the right child. The dummy split_condition XGBoost
+	// stores for categorical nodes must be ignored.
+	xt := xgbTree{
+		DefaultLeft:        []int{1, 0, 0},
+		LeftChildren:       []int{1, -1, -1},
+		RightChildren:      []int{2, -1, -1},
+		SplitConditions:    []float64{1e-45, 0.5, -0.5},
+		SplitIndices:       []int{1, 0, 0},
+		SplitType:          []int{1, 0, 0},
+		Categories:         []int{0, 2},
+		CategoriesNodes:    []int{0},
+		CategoriesSegments: []int{0},
+		CategoriesSizes:    []int{2},
+	}
+	xt.TreeParam.NumNodes = "3"
+
+	treeInfo, err := parseTreeInfo(xt)
+	require.NoError(t, err)
+
+	assert.Equal(
+		t,
+		&node{
+			data: nodeData{
+				DefaultLeft:    1,
+				ID:             0,
+				SplitCondition: 1e-45,
+				SplitIndex:     1,
+				Categorical:    true,
+				Categories:     []int{0, 2},
+			},
+			left: &node{
+				data: nodeData{
+					ID:             1,
+					SplitCondition: 0.5,
+				},
+			},
+			right: &node{
+				data: nodeData{
+					ID:             2,
+					SplitCondition: -0.5,
+				},
+			},
+		},
+		treeInfo,
+	)
+}
+
+func TestCategorySets(t *testing.T) {
+	// baseTree is a valid two-categorical-node tree the error cases mutate.
+	baseTree := func() xgbTree {
+		xt := xgbTree{
+			SplitType:          []int{1, 1, 0},
+			Categories:         []int{0, 2, 1, 3, 4},
+			CategoriesNodes:    []int{0, 1},
+			CategoriesSegments: []int{0, 2},
+			CategoriesSizes:    []int{2, 3},
+		}
+		xt.TreeParam.NumNodes = "3"
+		return xt
+	}
+
+	t.Run("valid decoding", func(t *testing.T) {
+		sets, err := categorySets(baseTree(), 3)
+		require.NoError(t, err)
+		assert.Equal(
+			t,
+			map[int64][]int{0: {0, 2}, 1: {1, 3, 4}},
+			sets,
+		)
+	})
+
+	t.Run("no categorical splits returns empty", func(t *testing.T) {
+		xt := xgbTree{SplitType: []int{0, 0, 0}}
+		xt.TreeParam.NumNodes = "3"
+		sets, err := categorySets(xt, 3)
+		require.NoError(t, err)
+		assert.Empty(t, sets)
+	})
+
+	tests := []struct {
+		name   string
+		mutate func(xt *xgbTree)
+	}{
+		{
+			name: "mismatched segment length",
+			mutate: func(xt *xgbTree) {
+				xt.CategoriesSegments = []int{0}
+			},
+		},
+		{
+			name: "mismatched size length",
+			mutate: func(xt *xgbTree) {
+				xt.CategoriesSizes = []int{2}
+			},
+		},
+		{
+			name: "segment out of range",
+			mutate: func(xt *xgbTree) {
+				xt.CategoriesSizes = []int{2, 99}
+			},
+		},
+		{
+			name: "negative segment start",
+			mutate: func(xt *xgbTree) {
+				xt.CategoriesSegments = []int{-1, 2}
+			},
+		},
+		{
+			name: "split_type length mismatch",
+			mutate: func(xt *xgbTree) {
+				xt.SplitType = []int{1, 1}
+			},
+		},
+		{
+			name: "split_type categorical but no set",
+			mutate: func(xt *xgbTree) {
+				xt.SplitType = []int{1, 1, 1}
+			},
+		},
+		{
+			name: "set present but split_type numeric",
+			mutate: func(xt *xgbTree) {
+				xt.SplitType = []int{0, 1, 0}
+			},
+		},
+		{
+			name: "node ID out of range",
+			mutate: func(xt *xgbTree) {
+				xt.CategoriesNodes = []int{0, 99}
+			},
+		},
+		{
+			name: "negative node ID",
+			mutate: func(xt *xgbTree) {
+				xt.CategoriesNodes = []int{0, -1}
+			},
+		},
+		{
+			name: "categorical data but no split_type",
+			mutate: func(xt *xgbTree) {
+				xt.SplitType = nil
+			},
+		},
+		{
+			name: "unsupported split_type value",
+			mutate: func(xt *xgbTree) {
+				xt.SplitType = []int{2, 1, 0}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			xt := baseTree()
+			test.mutate(&xt)
+			_, err := categorySets(xt, 3)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestParseTreeInfoValidation(t *testing.T) {
+	// baseTree is a valid numeric three-node tree (root with two leaves) that
+	// the error cases mutate.
+	baseTree := func() xgbTree {
+		xt := xgbTree{
+			DefaultLeft:     []int{0, 0, 0},
+			LeftChildren:    []int{1, -1, -1},
+			RightChildren:   []int{2, -1, -1},
+			SplitConditions: []float64{0.5, 0, 0},
+			SplitIndices:    []int{0, 0, 0},
+		}
+		xt.TreeParam.NumNodes = "3"
+		return xt
+	}
+
+	t.Run("valid tree parses", func(t *testing.T) {
+		_, err := parseTreeInfo(baseTree())
+		require.NoError(t, err)
+	})
+
+	tests := []struct {
+		name   string
+		mutate func(xt *xgbTree)
+	}{
+		{
+			name: "per-node array too short",
+			mutate: func(xt *xgbTree) {
+				xt.SplitIndices = []int{0, 0}
+			},
+		},
+		{
+			name: "per-node array too long",
+			mutate: func(xt *xgbTree) {
+				xt.DefaultLeft = []int{0, 0, 0, 0}
+			},
+		},
+		{
+			name: "child index out of range",
+			mutate: func(xt *xgbTree) {
+				xt.LeftChildren = []int{5, -1, -1}
+			},
+		},
+		{
+			name: "negative child index",
+			mutate: func(xt *xgbTree) {
+				xt.RightChildren = []int{-2, -1, -1}
+			},
+		},
+		{
+			name: "half-wired node with one missing child",
+			mutate: func(xt *xgbTree) {
+				xt.RightChildren = []int{-1, -1, -1}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			xt := baseTree()
+			test.mutate(&xt)
+			_, err := parseTreeInfo(xt)
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestReadModelMeta(t *testing.T) {
 	tests := []struct {
 		name              string

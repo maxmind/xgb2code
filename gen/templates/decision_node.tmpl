@@ -1,4 +1,6 @@
-{{if .DefaultLeft -}}
+{{if .MissingOnly -}}
+{{indent .Level}}if data[{{.SplitIndex}}] == nil {
+{{else if .DefaultLeft -}}
 {{indent .Level}}if data[{{.SplitIndex}}] == nil || {{if .Categorical}}{{.CategoryTest}}{{else}}*data[{{.SplitIndex}}] < {{.SplitCondition}}{{end}} {
 {{else -}}
 {{indent .Level}}if data[{{.SplitIndex}}] != nil && {{if .Categorical}}{{.CategoryTest}}{{else}}*data[{{.SplitIndex}}] < {{.SplitCondition}}{{end}} {

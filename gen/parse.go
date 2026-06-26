@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,11 +62,11 @@ type xgbModel struct {
 }
 
 type xgbTree struct {
-	DefaultLeft     []int     `json:"default_left"`
-	LeftChildren    []int     `json:"left_children"`
-	RightChildren   []int     `json:"right_children"`
-	SplitConditions []float64 `json:"split_conditions"`
-	SplitIndices    []int     `json:"split_indices"`
+	DefaultLeft     []int      `json:"default_left"`
+	LeftChildren    []int      `json:"left_children"`
+	RightChildren   []int      `json:"right_children"`
+	SplitConditions []xgbFloat `json:"split_conditions"`
+	SplitIndices    []int      `json:"split_indices"`
 	// SplitType marks each node's split kind: 0 = numeric, 1 = categorical. It
 	// is absent in models trained without categorical features, in which case
 	// every split is numeric.
@@ -83,19 +84,119 @@ type xgbTree struct {
 	} `json:"tree_param"`
 }
 
+// xgbFloat is a float64 decoded from XGBoost's JSON, where a number may appear
+// either as a normal JSON number or as one of the non-finite tokens Infinity,
+// -Infinity, and NaN that XGBoost emits but standard JSON forbids. readModel
+// rewrites those tokens to quoted strings before decoding (see
+// sanitizeNonFiniteNumbers), so this unmarshaler accepts a JSON number or any
+// quoted float literal (which includes the rewritten tokens). It is currently
+// used only for the split_conditions field, the one place these tokens occur.
+type xgbFloat float64
+
+func (s *xgbFloat) UnmarshalJSON(b []byte) error {
+	if len(b) > 0 && b[0] == '"' {
+		var str string
+		if err := json.Unmarshal(b, &str); err != nil {
+			return fmt.Errorf("decoding split_condition string: %w", err)
+		}
+		f, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			return fmt.Errorf("invalid split_condition %q: %w", str, err)
+		}
+		*s = xgbFloat(f)
+		return nil
+	}
+	var f float64
+	if err := json.Unmarshal(b, &f); err != nil {
+		return fmt.Errorf("decoding split_condition number: %w", err)
+	}
+	*s = xgbFloat(f)
+	return nil
+}
+
 func readModel(inputJSON string) (*xgbModel, error) {
-	fh, err := os.Open(filepath.Clean(inputJSON))
+	data, err := os.ReadFile(filepath.Clean(inputJSON))
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %w", err)
 	}
-	defer fh.Close()
 
 	var x xgbModel
-	if err := json.NewDecoder(fh).Decode(&x); err != nil {
+	if err := json.Unmarshal(sanitizeNonFiniteNumbers(data), &x); err != nil {
 		return nil, fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	return &x, nil
+}
+
+// sanitizeNonFiniteNumbers rewrites the JSON-incompatible literals XGBoost emits
+// for non-finite floats (Infinity, -Infinity, NaN) into quoted strings, anywhere
+// they appear outside a JSON string literal (never inside string contents). In
+// well-formed XGBoost output these tokens only ever appear as numeric values.
+// encoding/json rejects these tokens at the lexer level, before any custom
+// unmarshaler can see them, so they must be rewritten in the raw bytes;
+// xgbFloat.UnmarshalJSON then accepts the quoted form. The input is returned
+// unchanged when no such token is present.
+//
+// XGBoost writes these exact tokens from PrintSpecialFloat in
+// src/common/charconv.cc, reached when JsonWriter serializes each float of a
+// tree's split_conditions array; its own (non-standard) JSON parser reads them
+// back, so they are a deliberate, round-trippable encoding rather than
+// corruption. They occur only in the text .json format; the binary UBJSON
+// (.ubj) format stores raw IEEE bytes instead.
+func sanitizeNonFiniteNumbers(data []byte) []byte {
+	// "Infinity" is a substring of "-Infinity", so this also detects the latter.
+	if !bytes.Contains(data, []byte("Infinity")) &&
+		!bytes.Contains(data, []byte("NaN")) {
+		return data
+	}
+
+	// Checked longest-first so -Infinity is matched before Infinity.
+	tokens := [][]byte{[]byte("-Infinity"), []byte("Infinity"), []byte("NaN")}
+
+	out := make([]byte, 0, len(data))
+	inString := false
+	for i := 0; i < len(data); {
+		c := data[i]
+		if inString {
+			out = append(out, c)
+			// Skip the escaped character so an escaped quote does not end the
+			// string prematurely.
+			if c == '\\' && i+1 < len(data) {
+				out = append(out, data[i+1])
+				i += 2
+				continue
+			}
+			if c == '"' {
+				inString = false
+			}
+			i++
+			continue
+		}
+		if c == '"' {
+			inString = true
+			out = append(out, c)
+			i++
+			continue
+		}
+		matched := false
+		for _, tok := range tokens {
+			if !bytes.HasPrefix(data[i:], tok) {
+				continue
+			}
+			out = append(out, '"')
+			out = append(out, tok...)
+			out = append(out, '"')
+			i += len(tok)
+			matched = true
+			break
+		}
+		if matched {
+			continue
+		}
+		out = append(out, c)
+		i++
+	}
+	return out
 }
 
 func readTrees(x *xgbModel) ([]*node, error) {
@@ -169,8 +270,14 @@ type node struct {
 }
 
 type nodeData struct {
-	DefaultLeft    int
-	ID             int64
+	DefaultLeft int
+	ID          int64
+	// SplitCondition is kept as float64 through parsing and rendered as a
+	// full-precision decimal literal. In the generated comparison it meets
+	// *data[i] (a float32), so the Go compiler converts the literal back to
+	// float32 at compile time. That round-trip is lossless because XGBoost
+	// stores split conditions as float32 in the first place; the float64 here is
+	// only the widening from the JSON parse.
 	SplitCondition float64
 	SplitIndex     int
 	// Categorical reports whether this is a categorical split. When true,
@@ -201,23 +308,42 @@ func parseTreeInfo(xt xgbTree) (*node, error) {
 	nodes := make([]node, numNodes)
 	for i := range numNodes {
 		cats, categorical := categories[i]
+		sc := float64(xt.SplitConditions[i])
+
+		left := xt.LeftChildren[i]
+		right := xt.RightChildren[i]
+		isLeaf := left == -1 && right == -1
+
+		if err := checkSplitCondition(i, sc, categorical, isLeaf); err != nil {
+			return nil, err
+		}
+
+		// default_left is a boolean encoded as 0 or 1. The decision-node template
+		// and the -Infinity collapse both treat any non-zero as "missing goes
+		// left", so a corrupt value would be silently normalized; reject it.
+		defaultLeft := xt.DefaultLeft[i]
+		if defaultLeft != 0 && defaultLeft != 1 {
+			return nil, fmt.Errorf(
+				"node %d has invalid default_left %d (want 0 or 1)",
+				i,
+				defaultLeft,
+			)
+		}
+
 		nodes[i].data = nodeData{
-			DefaultLeft:    xt.DefaultLeft[i],
+			DefaultLeft:    defaultLeft,
 			ID:             i,
-			SplitCondition: xt.SplitConditions[i],
+			SplitCondition: sc,
 			SplitIndex:     xt.SplitIndices[i],
 			Categorical:    categorical,
 			Categories:     cats,
 		}
 
-		left := xt.LeftChildren[i]
-		right := xt.RightChildren[i]
-
 		// A leaf has no children (both -1). Any other combination, including a
 		// half-wired node with exactly one child, is malformed: the codegen
 		// treats a node with a nil child as a leaf and would silently drop the
 		// other subtree, so reject it rather than mispredict.
-		if left == -1 && right == -1 {
+		if isLeaf {
 			continue
 		}
 		if left < 0 || int64(left) >= numNodes ||
@@ -237,6 +363,61 @@ func parseTreeInfo(xt xgbTree) (*node, error) {
 	}
 
 	return &nodes[0], nil // Root node
+}
+
+// checkSplitCondition validates a node's split_conditions value. The value is a
+// numeric threshold for a numeric decision node, a leaf's output value for a
+// leaf, and a dummy (ignored) value for a categorical node. Only finite values
+// are supported, with one exception: a -Infinity threshold on a numeric decision
+// node. Such a threshold makes "value < threshold" false for every present
+// value, so the node routes all present values to its right child and missing
+// values per default_left. That is a "missingness split", which codegenTree
+// collapses to a clean branch. +Infinity and NaN are rejected because they
+// cannot be rendered as Go float literals and, unlike -Infinity, have no
+// unambiguous collapsed form (a present +Infinity feature value, for instance,
+// would still route differently).
+//
+// The -Infinity comes from XGBoost's histogram-based split finder (the hist
+// tree method, including when fed a QuantileDMatrix): a split that isolates
+// missing values lands at a feature's minimum, and the lower bound of the
+// lowest histogram bin is -inf (NumericBinLowerBound in XGBoost's
+// src/common/hist_util.h).
+func checkSplitCondition(id int64, sc float64, categorical, isLeaf bool) error {
+	// A leaf's value is its output, emitted verbatim as "sum += value" by the
+	// terminal_node template regardless of any (malformed) categorical marking,
+	// so it must always be finite. Check this before the categorical exemption
+	// below, which only applies to a categorical node's dummy threshold.
+	if isLeaf {
+		if math.IsInf(sc, 0) || math.IsNaN(sc) {
+			return fmt.Errorf(
+				"node %d has a non-finite leaf value (%v); only finite "+
+					"values are supported, except a -Infinity threshold on a "+
+					"decision node",
+				id,
+				sc,
+			)
+		}
+		return nil
+	}
+	if categorical {
+		// The value is a dummy for categorical nodes and is never used.
+		return nil
+	}
+	// A -Infinity threshold on a decision node is the supported missingness
+	// split; everything else non-finite is rejected.
+	if math.IsInf(sc, -1) {
+		return nil
+	}
+	if math.IsInf(sc, 0) || math.IsNaN(sc) {
+		return fmt.Errorf(
+			"node %d has a non-finite split threshold (%v); only finite "+
+				"values are supported, except a -Infinity threshold on a "+
+				"decision node",
+			id,
+			sc,
+		)
+	}
+	return nil
 }
 
 // checkNodeArrays verifies that every per-node array has exactly one entry per

@@ -4,6 +4,7 @@ package gen
 import (
 	"fmt"
 	"go/format"
+	"math"
 	"os"
 )
 
@@ -41,9 +42,12 @@ func generateSource(
 		return "", err
 	}
 
-	// We run the code through formatting to check for syntax errors. We don't
-	// return the formatted code since we intend what we generate to already be
-	// well formatted.
+	// We run the code through formatting to catch structural/syntax errors. We
+	// don't return the formatted code since we intend what we generate to already
+	// be well formatted. Note this only validates syntax, not values: a stray
+	// non-finite literal like -Inf is a valid Go identifier and would pass here,
+	// so checkSplitCondition (not this) is what guarantees no such literal is
+	// ever emitted.
 	if _, err := format.Source([]byte(code)); err != nil {
 		return "", fmt.Errorf("error formatting code: %w", err)
 	}
@@ -57,6 +61,14 @@ func codegenTree(r *renderer, tree *node, level int) (string, error) {
 		return r.executeTerminalNode(tree, level)
 	}
 
+	// A -Infinity threshold on a numeric split makes "*data[i] < threshold"
+	// false for every present value, so the split routes purely on whether the
+	// feature is missing. Rendering it literally would emit the uncompilable
+	// "*data[i] < -Inf", so collapse it to the equivalent missingness branch.
+	if !tree.data.Categorical && math.IsInf(tree.data.SplitCondition, -1) {
+		return codegenMissingnessSplit(r, tree, level)
+	}
+
 	left, err := codegenTree(r, tree.left, level+1)
 	if err != nil {
 		return "", err
@@ -66,7 +78,30 @@ func codegenTree(r *renderer, tree *node, level int) (string, error) {
 		return "", err
 	}
 
-	return r.executeDecisionNode(tree, level, left, right)
+	return r.executeDecisionNode(tree, level, left, right, false)
+}
+
+// codegenMissingnessSplit emits code for a numeric node whose -Infinity threshold
+// makes it route on missingness alone: missing values go left (if default_left)
+// and every present value goes right.
+func codegenMissingnessSplit(r *renderer, tree *node, level int) (string, error) {
+	// With default_left == 0, missing also routes right, so the node reduces to
+	// its right subtree. The left subtree is unreachable and dropped; that is safe
+	// because parseTreeInfo has already validated every node before codegen runs.
+	if tree.data.DefaultLeft == 0 {
+		return codegenTree(r, tree.right, level)
+	}
+
+	left, err := codegenTree(r, tree.left, level+1)
+	if err != nil {
+		return "", err
+	}
+	right, err := codegenTree(r, tree.right, level+1)
+	if err != nil {
+		return "", err
+	}
+
+	return r.executeDecisionNode(tree, level, left, right, true)
 }
 
 // GenerateFile generates a .go file containing a function that implements the XGB model.

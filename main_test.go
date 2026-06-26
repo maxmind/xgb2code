@@ -23,6 +23,7 @@ func TestGenerateAndRunModels(t *testing.T) {
 		{model: "binary-logitraw"},
 		{model: "reg-quantileerror"},
 		{model: "categorical"},
+		{model: "neg-inf-split"},
 	}
 
 	for _, test := range tests {

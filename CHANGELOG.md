@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.2.0
+## 1.2.0 (2026-06-26)
 
 - Added support for `-Infinity` values in a tree's `split_conditions`, which
   XGBoost's histogram tree method emits for splits that route on missingness

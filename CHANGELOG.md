@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.2.0
+
+- Added support for `-Infinity` values in a tree's `split_conditions`, which
+  XGBoost's histogram tree method emits for splits that route on missingness
+  (missing values follow the node's default direction and every present value
+  goes to the other child). Such models previously failed to parse. Other
+  non-finite split values (`+Infinity` or `NaN`) and non-finite leaf values now
+  produce a clear error.
+
 ## 1.1.0 (2026-06-17)
 
 - Added support for categorical splits (models trained with

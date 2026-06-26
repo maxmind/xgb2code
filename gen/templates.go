@@ -90,6 +90,10 @@ type decisionNodeParams struct {
 	// is true when the feature value is *not* in the node's category set (and so
 	// routes left). It mirrors the numeric "*data[i] < threshold" predicate.
 	CategoryTest string
+	// MissingOnly marks a numeric node whose -Infinity threshold routes on
+	// missingness alone, so the branch tests only "data[i] == nil" rather than
+	// the threshold comparison. See codegenMissingnessSplit.
+	MissingOnly bool
 }
 
 func (r *renderer) executeDecisionNode(
@@ -97,6 +101,7 @@ func (r *renderer) executeDecisionNode(
 	level int,
 	left,
 	right string,
+	missingOnly bool,
 ) (string, error) {
 	var buf bytes.Buffer
 	err := r.template.ExecuteTemplate(
@@ -108,6 +113,7 @@ func (r *renderer) executeDecisionNode(
 			nodeData:     tree.data,
 			Right:        right,
 			CategoryTest: categoryTest(tree.data),
+			MissingOnly:  missingOnly,
 		},
 	)
 	if err != nil {

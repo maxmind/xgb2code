@@ -137,7 +137,7 @@ func TestParseTreeInfoCategorical(t *testing.T) {
 		DefaultLeft:        []int{1, 0, 0},
 		LeftChildren:       []int{1, -1, -1},
 		RightChildren:      []int{2, -1, -1},
-		SplitConditions:    []float64{1e-45, 0.5, -0.5},
+		SplitConditions:    []xgbFloat{1e-45, 0.5, -0.5},
 		SplitIndices:       []int{1, 0, 0},
 		SplitType:          []int{1, 0, 0},
 		Categories:         []int{0, 2},
@@ -299,7 +299,7 @@ func TestParseTreeInfoValidation(t *testing.T) {
 			DefaultLeft:     []int{0, 0, 0},
 			LeftChildren:    []int{1, -1, -1},
 			RightChildren:   []int{2, -1, -1},
-			SplitConditions: []float64{0.5, 0, 0},
+			SplitConditions: []xgbFloat{0.5, 0, 0},
 			SplitIndices:    []int{0, 0, 0},
 		}
 		xt.TreeParam.NumNodes = "3"
@@ -345,6 +345,12 @@ func TestParseTreeInfoValidation(t *testing.T) {
 				xt.RightChildren = []int{-1, -1, -1}
 			},
 		},
+		{
+			name: "default_left outside {0, 1}",
+			mutate: func(xt *xgbTree) {
+				xt.DefaultLeft = []int{2, 0, 0}
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -354,6 +360,126 @@ func TestParseTreeInfoValidation(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestSanitizeNonFiniteNumbers(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "no tokens is unchanged",
+			in:   `{"split_conditions":[1.5,-2.0]}`,
+			want: `{"split_conditions":[1.5,-2.0]}`,
+		},
+		{
+			name: "quotes the non-finite tokens",
+			in:   `[1.5, -Infinity, Infinity, NaN, 2.0]`,
+			want: `[1.5, "-Infinity", "Infinity", "NaN", 2.0]`,
+		},
+		{
+			// -Infinity must be matched as a whole so the minus sign is not left
+			// behind as a separate token.
+			name: "negative infinity keeps its sign inside the quotes",
+			in:   `[-Infinity]`,
+			want: `["-Infinity"]`,
+		},
+		{
+			// A feature literally named with a token must not be rewritten; it is
+			// inside a JSON string, not a numeric value.
+			name: "tokens inside strings are left alone",
+			in:   `{"feature_names":["NaN","Infinity"],"split_conditions":[NaN]}`,
+			want: `{"feature_names":["NaN","Infinity"],"split_conditions":["NaN"]}`,
+		},
+		{
+			name: "escaped quote does not end the string early",
+			in:   `{"name":"a\"NaN","v":[NaN]}`,
+			want: `{"name":"a\"NaN","v":["NaN"]}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(
+				t,
+				test.want,
+				string(sanitizeNonFiniteNumbers([]byte(test.in))),
+			)
+		})
+	}
+}
+
+func TestSplitConditionUnmarshalJSON(t *testing.T) {
+	// After sanitizeNonFiniteNumbers runs, split_conditions is a mix of JSON
+	// numbers and quoted non-finite tokens; both forms must decode.
+	var got []xgbFloat
+	err := json.Unmarshal(
+		[]byte(`[1.5, "-Infinity", "Infinity", "NaN", -2.0]`),
+		&got,
+	)
+	require.NoError(t, err)
+
+	require.Len(t, got, 5)
+	assert.InDelta(t, 1.5, float64(got[0]), 1e-10)
+	assert.True(t, math.IsInf(float64(got[1]), -1))
+	assert.True(t, math.IsInf(float64(got[2]), 1))
+	assert.True(t, math.IsNaN(float64(got[3])))
+	assert.InDelta(t, -2.0, float64(got[4]), 1e-10)
+
+	// Malformed elements must surface a decode error, not silently decode as 0:
+	// a quoted token strconv cannot parse, and a bare token that is neither a
+	// number nor (after sanitizeNonFiniteNumbers) a quoted non-finite token.
+	t.Run("quoted non-numeric string is rejected", func(t *testing.T) {
+		err := json.Unmarshal([]byte(`["bogus"]`), &[]xgbFloat{})
+		require.Error(t, err)
+	})
+	t.Run("non-numeric bare token is rejected", func(t *testing.T) {
+		err := json.Unmarshal([]byte(`[true]`), &[]xgbFloat{})
+		require.Error(t, err)
+	})
+}
+
+func TestParseTreeInfoNonFinite(t *testing.T) {
+	// baseTree is a valid numeric three-node tree (root with two leaves) whose
+	// root threshold each case overrides.
+	baseTree := func(rootCond xgbFloat, defaultLeft int) xgbTree {
+		xt := xgbTree{
+			DefaultLeft:     []int{defaultLeft, 0, 0},
+			LeftChildren:    []int{1, -1, -1},
+			RightChildren:   []int{2, -1, -1},
+			SplitConditions: []xgbFloat{rootCond, 10, 20},
+			SplitIndices:    []int{0, 0, 0},
+		}
+		xt.TreeParam.NumNodes = "3"
+		return xt
+	}
+
+	negInf := xgbFloat(math.Inf(-1))
+	posInf := xgbFloat(math.Inf(1))
+	nan := xgbFloat(math.NaN())
+
+	t.Run("negative-infinity threshold is accepted", func(t *testing.T) {
+		_, err := parseTreeInfo(baseTree(negInf, 1))
+		require.NoError(t, err)
+	})
+
+	t.Run("positive-infinity threshold is rejected", func(t *testing.T) {
+		_, err := parseTreeInfo(baseTree(posInf, 1))
+		require.Error(t, err)
+	})
+
+	t.Run("NaN threshold is rejected", func(t *testing.T) {
+		_, err := parseTreeInfo(baseTree(nan, 1))
+		require.Error(t, err)
+	})
+
+	t.Run("non-finite leaf value is rejected", func(t *testing.T) {
+		xt := baseTree(0.5, 0)
+		xt.SplitConditions[1] = negInf
+		_, err := parseTreeInfo(xt)
+		require.Error(t, err)
+	})
 }
 
 func TestReadModelMeta(t *testing.T) {
@@ -580,7 +706,7 @@ func TestReadTreesNumParallelTree(t *testing.T) {
 			DefaultLeft:     []int{0},
 			LeftChildren:    []int{-1},
 			RightChildren:   []int{-1},
-			SplitConditions: []float64{0},
+			SplitConditions: []xgbFloat{0},
 			SplitIndices:    []int{0},
 		}
 		tree.TreeParam.NumNodes = "1"

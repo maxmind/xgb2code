@@ -480,6 +480,24 @@ func TestParseTreeInfoNonFinite(t *testing.T) {
 		_, err := parseTreeInfo(xt)
 		require.Error(t, err)
 	})
+
+	// A malformed tree can mark a leaf categorical (split_type 1 with a decoded
+	// category set). The leaf value is still emitted verbatim by the terminal
+	// node template, so the categorical dummy-value exemption must not let a
+	// non-finite leaf value through.
+	t.Run("non-finite value on a categorical leaf is rejected", func(t *testing.T) {
+		for _, sc := range []xgbFloat{negInf, posInf, nan} {
+			xt := baseTree(0.5, 0)
+			xt.SplitConditions[1] = sc
+			xt.SplitType = []int{0, 1, 0}
+			xt.Categories = []int{0}
+			xt.CategoriesNodes = []int{1}
+			xt.CategoriesSegments = []int{0}
+			xt.CategoriesSizes = []int{1}
+			_, err := parseTreeInfo(xt)
+			require.Error(t, err)
+		}
+	})
 }
 
 func TestReadModelMeta(t *testing.T) {

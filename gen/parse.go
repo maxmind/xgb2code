@@ -381,25 +381,37 @@ func parseTreeInfo(xt xgbTree) (*node, error) {
 // lowest histogram bin is -inf (NumericBinLowerBound in XGBoost's
 // src/common/hist_util.h).
 func checkSplitCondition(id int64, sc float64, categorical, isLeaf bool) error {
+	// A leaf's value is its output, emitted verbatim as "sum += value" by the
+	// terminal_node template regardless of any (malformed) categorical marking,
+	// so it must always be finite. Check this before the categorical exemption
+	// below, which only applies to a categorical node's dummy threshold.
+	if isLeaf {
+		if math.IsInf(sc, 0) || math.IsNaN(sc) {
+			return fmt.Errorf(
+				"node %d has a non-finite leaf value (%v); only finite "+
+					"values are supported, except a -Infinity threshold on a "+
+					"decision node",
+				id,
+				sc,
+			)
+		}
+		return nil
+	}
 	if categorical {
 		// The value is a dummy for categorical nodes and is never used.
 		return nil
 	}
 	// A -Infinity threshold on a decision node is the supported missingness
 	// split; everything else non-finite is rejected.
-	if !isLeaf && math.IsInf(sc, -1) {
+	if math.IsInf(sc, -1) {
 		return nil
 	}
 	if math.IsInf(sc, 0) || math.IsNaN(sc) {
-		kind := "split threshold"
-		if isLeaf {
-			kind = "leaf value"
-		}
 		return fmt.Errorf(
-			"node %d has a non-finite %s (%v); only finite values are "+
-				"supported, except a -Infinity threshold on a decision node",
+			"node %d has a non-finite split threshold (%v); only finite "+
+				"values are supported, except a -Infinity threshold on a "+
+				"decision node",
 			id,
-			kind,
 			sc,
 		)
 	}

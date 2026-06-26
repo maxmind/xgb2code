@@ -272,10 +272,12 @@ type node struct {
 type nodeData struct {
 	DefaultLeft int
 	ID          int64
-	// SplitCondition is kept as float64 through parsing but is narrowed back to
-	// float32 when rendered into the generated comparison. That is lossless
-	// because XGBoost stores split conditions as float32 in the first place; the
-	// float64 here is only the widening from the JSON round-trip.
+	// SplitCondition is kept as float64 through parsing and rendered as a
+	// full-precision decimal literal. In the generated comparison it meets
+	// *data[i] (a float32), so the Go compiler converts the literal back to
+	// float32 at compile time. That round-trip is lossless because XGBoost
+	// stores split conditions as float32 in the first place; the float64 here is
+	// only the widening from the JSON parse.
 	SplitCondition float64
 	SplitIndex     int
 	// Categorical reports whether this is a categorical split. When true,

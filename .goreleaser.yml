@@ -3,6 +3,8 @@ version: 2
 
 builds:
   - id: 'xgb2code'
+    env:
+      - 'CGO_ENABLED=0'
     binary: 'xgb2code'
     goos:
       - 'darwin'

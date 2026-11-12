@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.2.1
+
+- The release binaries are built with the current Go release. The 1.2.0 binaries
+  used Go 1.26.4, which has known standard-library vulnerabilities.
+- The macOS binaries now require macOS 13 Ventura or later.
+
 ## 1.2.0 (2026-06-26)
 
 - Added support for `-Infinity` values in a tree's `split_conditions`, which

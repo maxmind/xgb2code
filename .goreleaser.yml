@@ -5,6 +5,8 @@ builds:
   - id: 'xgb2code'
     env:
       - 'CGO_ENABLED=0'
+    flags:
+      - '-trimpath'
     binary: 'xgb2code'
     goos:
       - 'darwin'

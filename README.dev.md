@@ -1,6 +1,7 @@
 # Releasing
 
-- Install `goreleaser`. Refer to its docs.
+- Run `mise install`. It installs `goreleaser` and the Go version from
+  `mise.lock`.
 - Set a `GITHUB_TOKEN` environment variable. Refer to `goreleaser` docs for
   information.
   - `export GITHUB_TOKEN=$(gh auth token)`
@@ -12,7 +13,7 @@
 - Commit `CHANGELOG.md` and `version.go`.
 - Tag the release: `git tag -a v1.2.3 -m  v1.2.3`.
 - Push the tag: `git push origin v1.2.3`.
-- Run `goreleaser release`.
+- Run `mise exec -- goreleaser release`.
 - Edit the release on [GitHub](https://github.com/maxmind/xgb2code/releases) to
   include the changelog changes.
 - Make sure to push the rest of your changes.

@@ -3,6 +3,10 @@ version: 2
 
 builds:
   - id: 'xgb2code'
+    env:
+      - 'CGO_ENABLED=0'
+    flags:
+      - '-trimpath'
     binary: 'xgb2code'
     goos:
       - 'darwin'
@@ -32,9 +36,6 @@ checksum:
 
 snapshot:
   version_template: "{{ .Tag }}-next"
-
-changelog:
-  disable: true
 
 nfpms:
   - id: 'xgb2code'

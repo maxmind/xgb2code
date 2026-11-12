@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.2.1
+## 1.2.1 (2026-11-12)
 
 - The release binaries are built with the current Go release. The 1.2.0 binaries
   used Go 1.26.4, which has known standard-library vulnerabilities.

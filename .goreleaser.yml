@@ -37,9 +37,6 @@ checksum:
 snapshot:
   version_template: "{{ .Tag }}-next"
 
-changelog:
-  disable: true
-
 nfpms:
   - id: 'xgb2code'
     ids:
